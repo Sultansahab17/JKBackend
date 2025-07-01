@@ -1,17 +1,27 @@
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 import time
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://jkconstruction.design"}}, supports_credentials=True)
 
-FREEPIK_API_KEY = "FPSX581c2cafb70ede3a4e04ab8e5b39772c"  # Replace with your real key
+# ✅ Full CORS fix for Netlify + Render compatibility
+CORS(app, resources={r"/*": {"origins": [
+    "https://jkconstruction.design",
+    "https://www.jkconstruction.design",
+    "https://jkconstruction-design.netlify.app"  # ← include this if you use Netlify previews
+]}}, methods=["GET", "POST", "OPTIONS"])
+
+FREEPIK_API_KEY = "FPSX581c2cafb70ede3a4e04ab8e5b39772c"
 MYSTIC_URL = "https://api.freepik.com/v1/ai/mystic"
 MYSTIC_RESULT_URL = "https://api.freepik.com/v1/ai/mystic/{}"
 
-@app.route('/generate-image', methods=['POST'])
+# ✅ Explicit OPTIONS route to fix Render's preflight handling
+@app.route('/api/generate', methods=["OPTIONS"])
+def preflight():
+    return '', 204
+
+@app.route('/api/generate', methods=['POST'])
 def generate_image():
     data = request.get_json()
     prompt = data.get("prompt")
@@ -23,7 +33,6 @@ def generate_image():
         "Content-Type": "application/json"
     }
 
-    # Minimal payload for now (you can expand it later)
     payload = {
         "prompt": prompt,
         "structure_strength": 50,
@@ -39,7 +48,6 @@ def generate_image():
     }
 
     try:
-        # Step 1: Create task
         res = requests.post(MYSTIC_URL, headers=headers, json=payload)
         print("Create response:", res.status_code, res.text)
         res.raise_for_status()
@@ -49,7 +57,6 @@ def generate_image():
         if not task_id:
             return jsonify({"error": "No task_id received"}), 500
 
-        # Step 2: Poll result
         for _ in range(90):  # Wait up to 90 seconds
             time.sleep(1)
             poll_url = MYSTIC_RESULT_URL.format(task_id)
@@ -77,5 +84,10 @@ def generate_image():
         print("Server Exception:", repr(e))
         return jsonify({"error": str(e)}), 500
 
+import os
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5500)
+    port = int(os.environ.get("PORT", 10000))  # Let Render assign the correct port
+    app.run(host="0.0.0.0", port=port)
+
+
