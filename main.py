@@ -5,7 +5,7 @@ import requests
 import time
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "https://jkconstruction.design"}})
 
 FREEPIK_API_KEY = "FPSX581c2cafb70ede3a4e04ab8e5b39772c"  # Replace with your real key
 MYSTIC_URL = "https://api.freepik.com/v1/ai/mystic"
